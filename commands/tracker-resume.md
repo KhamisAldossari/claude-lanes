@@ -106,7 +106,3 @@ Only once the action is actually done:
 
 Then, in both layouts:
 - Report to the user: what was done, what changed in the tracker, and what the refreshed ▶ NEXT ACTION now is.
-
-### Step 6: Prove the close
-
-Before the final report, run one command whose output shows the close happened — `ls` the new session file and `grep` the new changelog line in the lane's `STATUS.md` (plus the root Features-index row when the lane is not root) — and quote that output. If anything is missing, Step 5 is not done: do it now, then re-run the check. A session that finishes its action and skips this leaves ▶ NEXT ACTION stale, which is the exact failure the tracker exists to prevent (measured before this step existed: 2 of 3 headless sessions skipped the close).

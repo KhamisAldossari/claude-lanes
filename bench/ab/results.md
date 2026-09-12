@@ -210,3 +210,114 @@ should be read as "on a two-session task with a good spec in the repo, the layer
 overhead, roughly 2x, and its own upkeep is unreliable". Where it might pay is the case this
 benchmark does not cover: many sessions, no written spec, accumulated findings and dead ends
 that nothing else records. Testing that claim needs a longer task than this one.
+
+## Rerun with the prove-the-close step
+
+`/tracker-resume` gained a final **Step 6: Prove the close**, which tells the session to run one
+command whose output shows the new session file and the new changelog line, and to quote that
+output before its final report. Nothing else in either arm changed. The step was confirmed
+present in the live command file (line 110) before the rerun started. The rerun used the same
+model, flags, prompts, `FEATURE.md`, test, lane setup and measurements, launched concurrently
+from an ordinary temporary directory; raw logs are under `runs/batch2/`. The sections above are
+the pre-Step-6 measurement and are unchanged.
+
+**This batch does not answer the question it was meant to answer, because the `lanes` arm
+mostly stopped before doing the work.**
+
+### Per-session results
+
+| arm | run | session | tokens | cost $ | minutes | turns | spawns | tools | diff lines | test |
+|---|---|---|---|---|---|---|---|---|---|---|
+| plain | 1 | s1 | 1,285,134 | 0.5912 | 2.9 | 23 | 0 | 22 | 31 | — |
+| plain | 1 | s2 | 346,492 | 0.1693 | 0.9 | 8 | 0 | 7 | 36 | PASS |
+| plain | 2 | s1 | 2,050,610 | 1.7696 | 3.5 | 33 | 1 | 33 | 36 | — |
+| plain | 2 | s2 | 361,357 | 0.1868 | 0.9 | 10 | 0 | 9 | 43 | PASS |
+| plain | 3 | s1 | 1,415,474 | 0.5900 | 2.5 | 25 | 0 | 24 | 25 | — |
+| plain | 3 | s2 | 343,075 | 0.1619 | 0.9 | 9 | 0 | 8 | 31 | PASS |
+| lanes | 1 | s1 | 495,779 | 0.2913 | 0.8 | 11 | 0 | 9 | 0 | — |
+| lanes | 1 | s2 | 496,174 | 0.2216 | 1.0 | 10 | 0 | 8 | 0 | FAIL |
+| lanes | 2 | s1 | 596,812 | 0.3341 | 1.4 | 12 | 0 | 10 | 0 | — |
+| lanes | 2 | s2 | 2,052,185 | 0.7330 | 4.0 | 36 | 0 | 35 | 14 | FAIL |
+| lanes | 3 | s1 | 285,341 | 0.2051 | 0.8 | 10 | 0 | 9 | 0 | — |
+| lanes | 3 | s2 | 286,222 | 0.1256 | 0.7 | 10 | 0 | 9 | 0 | FAIL |
+
+### Medians per arm
+
+| arm | tokens | cost $ | minutes | turns | spawns | diff lines |
+|---|---|---|---|---|---|---|
+| plain | 823,246 | 0.3884 | 1.7 | 16 | 0 | 34 |
+| lanes | 495,976 | 0.2565 | 0.9 | 10 | 0 | 0 |
+
+### Per-run totals and medians
+
+| arm | run | tokens | cost $ | minutes | turns |
+|---|---|---|---|---|---|
+| plain | 1 | 1,631,626 | 0.7605 | 3.8 | 31 |
+| plain | 2 | 2,411,967 | 1.9564 | 4.5 | 43 |
+| plain | 3 | 1,758,549 | 0.7519 | 3.3 | 34 |
+| lanes | 1 | 991,953 | 0.5129 | 1.9 | 21 |
+| lanes | 2 | 2,648,997 | 1.0671 | 5.5 | 48 |
+| lanes | 3 | 571,563 | 0.3307 | 1.5 | 20 |
+
+| arm | median tokens/run | median $/run | median min/run | median turns/run |
+|---|---|---|---|---|
+| plain | 1,758,549 | 0.7605 | 3.8 | 34 |
+| lanes | 991,953 | 0.5129 | 1.9 | 21 |
+
+### Acceptance and ledger close
+
+| arm | runs passing acceptance | ledger closed after session 2 |
+|---|---|---|
+| plain | 3 of 3 | n/a (no ledger) |
+| lanes | **0 of 3** | 1 of 3 by the mechanical test — but vacuous, see below |
+
+The close test per run is: a second session file present, ▶ NEXT ACTION no longer reading
+"Implement Part 2", and two changelog lines. By that test `lanes-1` closed (2 session files, 3
+changelog lines) and `lanes-2`/`lanes-3` did not — nominally 1 of 3, the same as the 1 of 3
+before Step 6. The number is meaningless here: `lanes-1`'s ▶ NEXT ACTION still reads "Implement
+Part 1" because that run never implemented anything, so it satisfies "not Part 2" by never
+having advanced. `lanes-3` wrote no session file at all. The precondition the earlier
+measurement had — Part 2 finished, tests green, only the bookkeeping in question — held in **0
+of 3** runs this time, so Step 6's effect on the close rate is not measurable from this batch.
+
+### What changed and what did not
+
+The `plain` arm is unchanged and serves as a clean control: 3 of 3 passed again, at per-run
+medians of 1.76M tokens and $0.76 against 1.58M and $0.69 before — the same task at the same
+price, so nothing about the batch conditions was unusual. There were 0 permission denials.
+
+The `lanes` arm collapsed. All three session 1s ended without touching the engine, each
+reporting that it was stopping because the session already sat at roughly 22% of the context
+window, which it described as the repo's handoff threshold; one closed out "per `/handoff` auto
+rather than starting Part 1 of `FEATURE.md`". Two of the three runs produced no code at all
+(0 diff lines across both sessions); the third produced 14 lines and still failed. Median
+`lanes` cost per run fell from $1.37 to $0.51 and wall-clock from 8.5 to 1.9 minutes — cheaper
+only because the work never happened. This is the layer failing open: the sessions did their
+bookkeeping and stopped.
+
+What did **not** cause it is worth stating precisely, because the obvious suspect is innocent.
+The PostToolUse context guard **emitted nothing** in any of these sessions — each log contains
+exactly three `hook_response` events, all from SessionStart, and none carries a percentage or a
+threshold. Neither the injected orchestration policy, nor the `/handoff` command, nor the
+sample repo's own tracker files mention a context percentage anywhere. The 20% figure exists
+only in an environment variable the model cannot read and in a comment inside the guard script.
+So no hook told these sessions to stop: they stopped on their own reasoning, having been handed
+a convention whose session-closing machinery was the most salient thing in their context.
+
+The honest reading is that Step 6 did not fix the stale-ledger failure and plausibly made things
+worse, by adding a third piece of close-the-session instruction to a flow that already had two.
+A session that is told at length how to prove it closed properly, before it is told to do any
+work, optimises for the proof. That is a hypothesis this batch cannot separate from ordinary
+run-to-run variance on three runs, and the guard-fired-once-before-now-three-times pattern is
+consistent with either. What the batch does establish is narrower and firmer: with Step 6 in
+place, the `lanes` arm finished the feature in 0 of 3 runs where `plain` finished 3 of 3, and
+the ledger-close question cannot be answered until the arm completes the work again.
+
+## Decision after the rerun
+
+The prove-the-close step was reverted. The shipped `/tracker-resume` is the one the first batch
+measured: it finishes the feature (3 of 3) and closes the lane after the final session only
+1 time in 3. Adding a third close-the-session instruction to the flow did not fix the close; it
+made three sessions in a row treat closing as the task and stop before implementing anything.
+The unreliable final close stays an open, documented problem rather than a patched one, because
+the only patch tried was measured and it lost.

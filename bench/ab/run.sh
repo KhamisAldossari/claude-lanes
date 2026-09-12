@@ -196,6 +196,18 @@ S2_COMMITS="$(git -C "$REPO" log --oneline "$BENCH..HEAD" | wc -l | tr -d ' ')"
 ( cd "$REPO" && "$PY" -m pytest tests/test_ab.py -q > "$ROOT/pytest.txt" 2>&1 )
 TEST_RC="$?"
 
+# ---- 5b. lanes arm: was the lane actually closed after session 2? ----------
+# Read-only; the NEXT ACTION text goes to a file rather than a shell variable so
+# backticks in it can never be command-substituted by the collector heredoc.
+LANE_SESSIONS=-1
+LANE_CHANGELOG=-1
+if [ "$ARM" = "lanes" ]; then
+  LDIR="$REPO/tracker/features/$SLUG"
+  LANE_SESSIONS="$(ls -1 "$LDIR/sessions" 2>/dev/null | grep -c . | tr -d ' ')"
+  LANE_CHANGELOG="$(grep -c '^- s[0-9]' "$LDIR/STATUS.md" 2>/dev/null | tr -d ' ')"
+  sed -n '/^## ▶ NEXT ACTION/{n;p;}' "$LDIR/STATUS.md" > "$ROOT/lane-next-action.txt" 2>/dev/null
+fi
+
 # ---- 6. collect ------------------------------------------------------------
 "$PY" - <<PY > "$ROOT/result.json" || exit 1
 import io, json, re, sys
@@ -310,8 +322,18 @@ s1_fn = fn_source(s1_engine, "build_and_solve")
 sessions[0]["build_and_solve_touched"] = (
     None if (bench_fn is None or s1_fn is None) else bench_fn != s1_fn)
 
+ledger = None
+if "$ARM" == "lanes":
+    nxt = read(root + "/lane-next-action.txt").strip()
+    sess_n, chg_n = $LANE_SESSIONS, $LANE_CHANGELOG
+    stale = "implement part 2" in nxt.lower()
+    ledger = {"session_files": sess_n, "changelog_lines": chg_n,
+              "next_action": nxt, "next_action_stale": stale,
+              "closed": sess_n >= 2 and chg_n >= 2 and not stale}
+
 json.dump({
     "arm": "$ARM",
+    "ledger": ledger,
     "run": int("$N"),
     "model": "$MODEL",
     "settings": json.loads('''$SETTINGS'''),

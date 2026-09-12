@@ -41,9 +41,11 @@ wall-clock for the same outcome.** The injected policy is under 1 % of that (abo
 per session, identical in every run); the rest is behaviour. Reading the ledger, verifying state
 against git, then writing a session file and three rollups doubles the turn count, and every turn
 re-reads a context the ledger work keeps growing. Worse, the close after the final session was
-skipped in two of three runs, which is the staleness the ledger exists to prevent. Step 6 of
-`/tracker-resume` ("prove the close") was added after this measurement and has not been
-re-benchmarked. The task is close to a best case for plain Claude Code: `FEATURE.md` is a
+skipped in two of three runs, which is the staleness the ledger exists to prevent. A stronger
+close instruction (a "prove the close" step appended to `/tracker-resume`) was tried and
+re-benchmarked: all three lanes sessions then stopped before starting the work, citing a
+handoff threshold no hook had emitted, and finished 0 of 3. It was reverted; the shipped flow
+is the measured one, and the unreliable final close is a known open issue. The task is close to a best case for plain Claude Code: `FEATURE.md` is a
 committed spec naming both parts, so a cold session needs no memory of the previous one. The case
 where a ledger should pay, many sessions and no written spec, is not covered by this benchmark.
 Both arms also carried the author's user-level agents and commands, identical on both sides, so
