@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "lanes",
+  "description": "Tracked feature lanes and a token-disciplined orchestrator layer for Claude Code.",
+  "owner": {
+    "name": "Khamis Aldossary",
+    "url": "https://github.com/KhamisAldossari"
+  },
+  "plugins": [
+    {
+      "name": "lanes",
+      "description": "Run big features as tracked lanes with an orchestrator policy and tiered worker contracts.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

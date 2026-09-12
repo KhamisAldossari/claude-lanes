@@ -1,0 +1,10 @@
+{
+  "name": "lanes",
+  "version": "0.1.0",
+  "description": "Run big features as tracked lanes: a git-ignored tracker/ ledger that cold sessions resume from, plus an orchestrator policy and tiered worker contracts that keep delegation from burning tokens.",
+  "author": {
+    "name": "Khamis Aldossary",
+    "url": "https://github.com/KhamisAldossari"
+  },
+  "hooks": "./hooks/hooks.json"
+}
